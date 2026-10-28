@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#3d4dff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nexi">
+<title>Nexi</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one full-height column. Header strip, scrolling thread, composer pinned at the bottom. Assistant text runs open on the page, only the user's lines sit in bubbles. Memory opens as a sheet over the thread. */
+:root {
+  --bg: #edf0f6;
+  --surface: #ffffff;
+  --ink: #151a2b;
+  --muted: #667088;
+  --line: #d8ddea;
+  --accent: #3d4dff;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3e6ff;
+  --danger: #c2334d;
+  --code-bg: #f3f5fb;
+  --font-body: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Unbounded", "Onest", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1220;
+    --surface: #181c2f;
+    --ink: #eceff8;
+    --muted: #98a0bb;
+    --line: #272c45;
+    --accent: #8c98ff;
+    --accent-ink: #0f1220;
+    --accent-soft: #232852;
+    --danger: #ff7d93;
+    --code-bg: #12162a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1220;
+  --surface: #181c2f;
+  --ink: #eceff8;
+  --muted: #98a0bb;
+  --line: #272c45;
+  --accent: #8c98ff;
+  --accent-ink: #0f1220;
+  --accent-soft: #232852;
+  --danger: #ff7d93;
+  --code-bg: #12162a;
+  color-scheme: dark;
+}
+
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  -webkit-text-size-adjust: 100%;
+}
+*, *::before, *::after { box-sizing: border-box; }
+button, textarea, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+}
+
+/* header */
+.top {
+  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 12px;
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 var(--accent-soft);
+  flex: none;
+}
+.app[data-busy="true"] .dot { animation: ping 1.4s ease-out infinite; }
+@keyframes ping {
+  0% { box-shadow: 0 0 0 0 var(--accent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+.word { font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+.mem-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.mem-btn .n {
+  font-family: var(--font-mono); font-size: 12px;
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: 999px; padding: 1px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.notice {
+  background: var(--accent-soft);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* thread */
+.thread {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-block: 8px 16px;
+  scroll-behavior: smooth;
+}
+.msg { min-width: 0; max-width: 100%; }
+.msg.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 14px;
+  max-width: 88%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.msg.bot .who {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.msg.bot .body { overflow-wrap: anywhere; }
+.body > :first-child { margin-top: 0; }
+.body > :last-child { margin-bottom: 0; }
+.body p { margin: 0 0 0.75em; }
+.body h4 { margin: 1em 0 0.35em; font-size: 16px; font-weight: 600; }
+.body ul, .body ol { margin: 0 0 0.75em; padding-left: 1.3em; }
+.body li { margin-bottom: 0.2em; }
+.body code {
+  font-family: var(--font-mono); font-size: 0.88em;
+  background: var(--code-bg); border-radius: 6px; padding: 1px 6px;
+}
+.code {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--code-bg);
+  margin: 0 0 0.75em;
+  overflow: hidden;
+}
+.code-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.copy {
+  background: transparent; border: 1px solid var(--line); border-radius: 8px;
+  padding: 3px 10px; font-size: 12px; font-family: var(--font-body);
+  text-transform: none; letter-spacing: 0; color: var(--ink);
+}
+.code pre { margin: 0; padding: 12px; overflow-x: auto; }
+.code pre code { background: none; padding: 0; font-size: 13px; line-height: 1.55; white-space: pre; }
+.thinking { color: var(--muted); }
+.thinking i {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; margin-left: 3px; animation: blink 1.2s infinite both;
+}
+.thinking i:nth-child(2) { animation-delay: 0.2s; }
+.thinking i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+.note { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.err {
+  align-self: stretch;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+/* empty state */
+.hello { padding-top: 6vh; display: flex; flex-direction: column; gap: 18px; }
+.hello h1 {
+  font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(26px, 8vw, 38px); line-height: 1.15; margin: 0;
+  text-wrap: balance;
+}
+.hello p { margin: 0; color: var(--muted); max-width: 44ch; }
+.starts { display: grid; gap: 8px; }
+.start {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+.start small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+
+/* composer */
+.composer {
+  flex: none;
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 8px 8px 8px 16px;
+  margin-bottom: 12px;
+}
+.composer textarea {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; resize: none; outline: none;
+  max-height: 160px; padding: 7px 0; line-height: 1.4;
+}
+.composer:focus-within { border-color: var(--accent); }
+.go {
+  flex: none; width: 40px; height: 40px; border-radius: 50%;
+  border: 0; background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center;
+}
+.go[disabled] { opacity: 0.4; cursor: default; }
+.go svg { width: 18px; height: 18px; display: block; }
+
+/* memory sheet */
+.sheet {
+  position: absolute; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column; min-height: 0;
+  z-index: 5;
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding-block: 12px; }
+.sheet-head h2 { font-family: var(--font-display); font-size: 18px; font-weight: 600; margin: 0; }
+.close {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; font-size: 14px; font-weight: 500;
+}
+.sheet-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-bottom: 16px; }
+.sheet-body > p { margin: 0; color: var(--muted); font-size: 14px; }
+.facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.facts li {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 6px 10px 14px; font-size: 15px; overflow-wrap: anywhere;
+}
+.facts .x {
+  flex: none; background: transparent; border: 0; color: var(--muted);
+  width: 32px; height: 28px; border-radius: 8px; font-size: 18px; line-height: 1;
+}
+.empty-facts { color: var(--muted); font-size: 14px; border: 1px dashed var(--line); border-radius: 12px; padding: 14px; }
+.add { display: flex; gap: 8px; }
+.add input {
+  flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px; outline: none;
+}
+.add input:focus { border-color: var(--accent); }
+.add button, .danger {
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px;
+  padding: 10px 16px; font-weight: 500;
+}
+.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); align-self: flex-start; }
+.danger[data-armed="true"] { border-color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .thread { scroll-behavior: auto; }
+  .app[data-busy="true"] .dot, .thinking i { animation: none; }
+}
+.actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.notice button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 4px 12px; margin-left: 6px; font-weight: 500; }
+.field { display: grid; gap: 6px; }
+.field label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.field input, .field select {
+  width: 100%; min-width: 0; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px; outline: none;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.status { font-size: 14px; min-height: 1.4em; }
+.status.bad { color: var(--danger); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px; padding: 10px 16px; font-weight: 500; }
+.btn-row button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.mod-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; gap: 8px; max-width: 100%;
+}
+.mod-bar p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.mods { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mods li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.mods .t { font-weight: 500; overflow-wrap: anywhere; }
+.mods .off { opacity: 0.55; }
+.mods .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.mods .row button { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px; font-size: 13px; }
+.mods .row button.del { color: var(--danger); }
+textarea.big { width: 100%; min-height: 96px; resize: vertical; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; outline: none; }
+textarea.big:focus { border-color: var(--accent); }
+.tiny { font-size: 12px; color: var(--muted); margin: 0; }
+.safe-note { background: var(--accent-soft); border-radius: 12px; padding: 10px 14px; font-size: 14px; margin-bottom: 8px; }
+.safe-note button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 4px 12px; margin-left: 6px; font-weight: 500; }
+ol.how { margin: 0; padding-left: 1.2em; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="app" id="app" data-busy="false">
+  <header class="top">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><span class="word">Nexi</span></div>
+    <div class="actions">
+      <button class="mem-btn" id="modBtn" type="button" aria-haspopup="dialog">Правки</button>
+      <button class="mem-btn" id="setBtn" type="button" aria-haspopup="dialog">Ключ</button>
+      <button class="mem-btn" id="memBtn" type="button" aria-haspopup="dialog">Память <span class="n" id="memN">0</span></button>
+    </div>
+  </header>
+  <div class="notice" id="notice" hidden>Чтобы Nexi отвечал, добавь бесплатный ключ Gemini. <button type="button" id="openSet">Добавить</button></div>
+  <div class="safe-note" id="safeNote" hidden>Безопасный режим: правки отключены. <button type="button" id="safeOff">Вернуть правки</button></div>
+  <main class="thread" id="thread" role="log" aria-live="polite" aria-label="Переписка с Nexi"></main>
+  <form class="composer" id="composer" autocomplete="off">
+    <textarea id="box" rows="1" placeholder="Напиши Nexi…" aria-label="Сообщение"></textarea>
+    <button class="go" id="go" type="submit" aria-label="Отправить" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </button>
+  </form>
+
+  <section class="sheet" id="sheet" role="dialog" aria-label="Память Nexi" hidden>
+    <div class="sheet-head">
+      <h2>Что Nexi помнит</h2>
+      <button class="close" id="closeSheet" type="button">Готово</button>
+    </div>
+    <div class="sheet-body">
+      <p>Nexi сам записывает важное из разговоров. Лишнее можно убрать или добавить своё.</p>
+      <ul class="facts" id="facts"></ul>
+      <form class="add" id="addForm" autocomplete="off">
+        <input id="addInput" type="text" placeholder="Например: я учусь на дизайнера" aria-label="Новый факт для памяти" maxlength="160">
+        <button type="submit">Добавить</button>
+      </form>
+      <button class="danger" id="wipeChat" type="button">Очистить переписку</button>
+    </div>
+  </section>
+
+  <section class="sheet" id="setSheet" role="dialog" aria-label="Ключ Gemini" hidden>
+    <div class="sheet-head">
+      <h2>Ключ Gemini</h2>
+      <button class="close" id="closeSet" type="button">Готово</button>
+    </div>
+    <div class="sheet-body">
+      <ol class="how">
+        <li>Открой aistudio.google.com и войди в Google-аккаунт.</li>
+        <li>Нажми «Get API key», затем «Create API key» и скопируй ключ.</li>
+        <li>Вставь его сюда. Он хранится только в этом браузере и уходит только в Google.</li>
+      </ol>
+      <form class="field" id="keyForm" autocomplete="off">
+        <label for="keyInput">API-ключ</label>
+        <input id="keyInput" type="password" placeholder="AIza…" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </form>
+      <div class="field">
+        <label for="modelSel">Модель</label>
+        <select id="modelSel"><option value="gemini-flash-latest">gemini-flash-latest</option></select>
+      </div>
+      <div class="status" id="keyStatus" role="status"></div>
+      <div class="btn-row">
+        <button type="button" id="saveKey">Сохранить и проверить</button>
+        <button type="button" class="ghost" id="delKey">Удалить ключ</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="modSheet" role="dialog" aria-label="Правки Nexi" hidden>
+    <div class="sheet-head">
+      <h2>Правки Nexi</h2>
+      <button class="close" id="closeMod" type="button">Готово</button>
+    </div>
+    <div class="sheet-body">
+      <p>Опиши, что изменить в приложении. Nexi напишет код правки и применит её, а ты решишь, оставить или отменить.</p>
+      <textarea class="big" id="modAsk" aria-label="Что изменить" placeholder="Например: добавь в шапку кнопку, которая очищает чат. Или: сделай текст ответов крупнее."></textarea>
+      <div class="status" id="modStatus" role="status"></div>
+      <div class="btn-row"><button type="button" id="modGo">Предложить правку</button></div>
+      <ul class="mods" id="modList"></ul>
+      <p class="tiny">Правка это код, который пишет модель. Он работает внутри приложения и видит всё, что видит оно, включая ключ. Оставляй только те правки, что тебе нужны, а странные удаляй. Если экран сломался, открой ссылку с #safe в конце.</p>
+    </div>
+  </section>
+
+  <div class="mod-bar" id="modBar" hidden>
+    <p id="modBarText"></p>
+    <div class="btn-row"><button type="button" id="modKeep">Оставить</button><button type="button" class="ghost" id="modUndo">Отменить</button></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LS = "nexi:v1";
+  var state = { facts: [], messages: [], updatedAt: 0 };
+  var KEYK = "nexi:key", MODELK = "nexi:model", API = "https://generativelanguage.googleapis.com/v1beta/";
+  var sample = null, dbDoc = null, busy = false, ctl = null, transientError = "";
+
+  var $ = function (s) { return document.querySelector(s); };
+  var thread = $("#thread"), box = $("#box"), go = $("#go"), app = $("#app");
+
+  var STARTS = [
+    ["Сообщение", "Напиши сообщение, что я задержусь на два часа, коротко и вежливо"],
+    ["Математика", "Найди производную x² · sin x и объясни по шагам"],
+    ["Код", "Сделай простой калькулятор на JavaScript в одном файле"],
+    ["Память", "Запомни: я люблю короткие ответы без воды"]
+  ];
+
+  /* ---------- storage ---------- */
+  try {
+    var raw = localStorage.getItem(LS);
+    if (raw) {
+      var o = JSON.parse(raw);
+      if (o && Array.isArray(o.messages)) {
+        state.messages = o.messages;
+        state.facts = Array.isArray(o.facts) ? o.facts : [];
+        state.updatedAt = o.updatedAt || 0;
+      }
+    }
+  } catch (e) {}
+
+  var saveTimer = null, saving = Promise.resolve();
+  function save() {
+    state.updatedAt = Date.now();
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 700);
+  }
+  function flush() {
+    if (!dbDoc) return;
+    var body = {
+      facts: state.facts.slice(-100),
+      messages: state.messages.filter(function (m) { return !m.pending; }).slice(-60),
+      updatedAt: state.updatedAt
+    };
+    saving = saving.then(function () { return dbDoc.set(body); }).catch(function () {});
+  }
+
+  /* ---------- text rendering ---------- */
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function inline(s) {
+    return esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  }
+  function blocks(t) {
+    var lines = t.split("\n"), out = "", list = null, para = [];
+    function fp() { if (para.length) { out += "<p>" + para.map(inline).join("<br>") + "</p>"; para = []; } }
+    function fl() {
+      if (list) {
+        out += "<" + list.t + ">" + list.i.map(function (x) { return "<li>" + inline(x) + "</li>"; }).join("") + "</" + list.t + ">";
+        list = null;
+      }
+    }
+    lines.forEach(function (ln) {
+      var m;
+      if (!ln.trim()) { fp(); fl(); return; }
+      if ((m = ln.match(/^\s*[-*•]\s+(.*)/))) {
+        fp(); if (!list || list.t !== "ul") { fl(); list = { t: "ul", i: [] }; } list.i.push(m[1]);
+      } else if ((m = ln.match(/^\s*\d+[.)]\s+(.*)/))) {
+        fp(); if (!list || list.t !== "ol") { fl(); list = { t: "ol", i: [] }; } list.i.push(m[1]);
+      } else if ((m = ln.match(/^#{1,4}\s+(.*)/))) {
+        fp(); fl(); out += "<h4>" + inline(m[1]) + "</h4>";
+      } else { fl(); para.push(ln); }
+    });
+    fp(); fl();
+    return out;
+  }
+  function md(src) {
+    return src.split("```").map(function (p, i) {
+      if (i % 2 === 1) {
+        var nl = p.indexOf("\n");
+        var lang = nl >= 0 ? p.slice(0, nl).trim() : "";
+        var code = nl >= 0 ? p.slice(nl + 1) : p;
+        return '<div class="code"><div class="code-bar"><span>' + (esc(lang) || "код") +
+          '</span><button type="button" class="copy">Копировать</button></div><pre><code>' +
+          esc(code.replace(/\n$/, "")) + "</code></pre></div>";
+      }
+      return blocks(p);
+    }).join("");
+  }
+
+  /* ---------- thread ---------- */
+  function nearBottom() { return thread.scrollHeight - thread.scrollTop - thread.clientHeight < 120; }
+  function toBottom() { thread.scrollTop = thread.scrollHeight; }
+
+  function botBody(m) {
+    if (m.pending && !m.content) return '<span class="thinking">Думаю<i></i><i></i><i></i></span>';
+    return md(m.content || "");
+  }
+  function msgNode(m) {
+    var d = document.createElement("div");
+    if (m.role === "user") {
+      d.className = "msg user";
+      d.textContent = m.content;
+    } else {
+      d.className = "msg bot";
+      d.innerHTML = '<div class="who">Nexi</div><div class="body">' + botBody(m) + "</div>" +
+        (m.note ? '<div class="note">' + esc(m.note) + "</div>" : "");
+    }
+    return d;
+  }
+
+  function render() {
+    thread.textContent = "";
+    if (!state.messages.length) {
+      var h = document.createElement("div");
+      h.className = "hello";
+      h.innerHTML = "<h1>Привет. Я Nexi.</h1><p>Пишу код, решаю задачи, составляю сообщения и запоминаю, что ты мне рассказываешь.</p>";
+      var wrap = document.createElement("div");
+      wrap.className = "starts";
+      STARTS.forEach(function (s) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "start";
+        b.innerHTML = "<small>" + esc(s[0]) + "</small>" + esc(s[1]);
+        b.addEventListener("click", function () { send(s[1]); });
+        wrap.appendChild(b);
+      });
+      h.appendChild(wrap);
+      thread.appendChild(h);
+    } else {
+      state.messages.forEach(function (m) { thread.appendChild(msgNode(m)); });
+    }
+    if (transientError) {
+      var e = document.createElement("div");
+      e.className = "err"; e.textContent = transientError;
+      thread.appendChild(e);
+    }
+    toBottom();
+    $("#memN").textContent = String(state.facts.length);
+  }
+
+  function renderLast() {
+    var m = state.messages[state.messages.length - 1];
+    var el = thread.lastElementChild;
+    if (!m || !el || !el.classList.contains("bot")) return render();
+    var stick = nearBottom();
+    el.querySelector(".body").innerHTML = botBody(m);
+    if (stick) toBottom();
+  }
+
+  thread.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".copy");
+    if (!btn) return;
+    var code = btn.closest(".code").querySelector("code");
+    var text = code.textContent;
+    var done = function () { btn.textContent = "Скопировано"; setTimeout(function () { btn.textContent = "Копировать"; }, 1500); };
+    var fallback = function () {
+      var r = document.createRange(); r.selectNodeContents(code);
+      var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = "Выделено";
+      setTimeout(function () { btn.textContent = "Копировать"; }, 1500);
+    };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  /* ---------- Claude ---------- */
+  function rules() {
+    var facts = state.facts.length ? state.facts.map(function (f) { return "- " + f; }).join("\n") : "(пока ничего)";
+    return "Ты Nexi, личный ИИ-ассистент одного человека. Сейчас " + new Date().toLocaleString("ru-RU") + ".\n" +
+      "Отвечай на языке пользователя (по умолчанию по-русски), коротко и по делу: у человека маленький экран. " +
+      "Умеешь писать и исправлять код, решать задачи по математике с объяснением по шагам, составлять черновики сообщений и писем. " +
+      "Код всегда давай в блоках с тройными обратными кавычками и указанием языка.\n" +
+      "Сейчас ты НЕ можешь отправлять сообщения, делать заказы, звонить и выходить в интернет. " +
+      "Если просят об этом, скажи прямо, что в этой версии ты можешь только подготовить готовый текст или список действий, и предложи его. " +
+      "Никогда не говори, что что-то уже отправил, заказал или сделал вне этого чата.\n" +
+      "Что известно о пользователе (используй, только когда это улучшает ответ, и не пересказывай без повода):\n" + facts;
+  }
+
+  function buildInput() {
+    var hist = state.messages
+      .filter(function (m) { return !m.pending && m.content; })
+      .slice(-24)
+      .map(function (m) { return { role: m.role, content: m.content }; });
+    return [{ role: "user", content: rules() }].concat(hist);
+  }
+
+  function errCopy(code) {
+    switch (code) {
+      case "bad_key": return "Gemini не принял ключ. Открой «Ключ» и вставь его заново.";
+      case "bad_model": return "Такой модели нет. Открой «Ключ» и выбери другую модель.";
+      case "offline": return "Нет связи с интернетом. Проверь сеть и напиши снова.";
+      case "rate_limited": return "Лимит бесплатного тарифа на сейчас исчерпан. Подожди минуту и напиши снова.";
+      case "prompt_too_large": return "Переписка стала слишком длинной. Очисти её в разделе «Память».";
+      case "refused": return "Gemini не стал отвечать на это. Попробуй переформулировать.";
+      default: return "Не получилось ответить. Попробуй ещё раз.";
+    }
+  }
+
+  function setBusy(v) {
+    busy = v;
+    app.dataset.busy = v ? "true" : "false";
+    updateGo();
+  }
+  function updateGo() {
+    var stop = busy;
+    go.disabled = !stop && (!sample || !box.value.trim());
+    go.setAttribute("aria-label", stop ? "Остановить" : "Отправить");
+    go.innerHTML = stop
+      ? '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  }
+
+  async function send(text) {
+    text = (text || "").trim();
+    if (busy || !sample || !text) return;
+    transientError = "";
+    state.messages.push({ role: "user", content: text, t: Date.now() });
+    var input = buildInput();
+    var reply = { role: "assistant", content: "", t: Date.now(), pending: true };
+    state.messages.push(reply);
+    box.value = ""; autosize();
+    ctl = new AbortController();
+    setBusy(true);
+    render();
+    var ok = false;
+    try {
+      var r = await sample(input, {
+        signal: ctl.signal,
+        onText: function (u) { reply.content = u.text; renderLast(); }
+      });
+      reply.content = r.text;
+      if (r.truncated) reply.note = "Ответ оборвался. Напиши «продолжай».";
+      ok = true;
+    } catch (e) {
+      if (e && e.text) reply.content = e.text;
+      if (e && e.code === "cancelled") { reply.note = "Остановлено."; ok = !!reply.content; }
+      else {
+        transientError = errCopy(e && e.code);
+        if (reply.content) reply.note = "Ответ прервался.";
+      }
+    }
+    delete reply.pending;
+    if (!reply.content) state.messages.pop();
+    setBusy(false);
+    ctl = null;
+    save();
+    render();
+    if (ok && reply.content && !reply.note) learn(text, reply.content);
+  }
+
+  async function learn(userText, answer) {
+    if (!sample || userText.length < 12 || !/запомни|я |мне |мо[йяиё]|меня|люблю|хочу|учусь|работаю|живу|предпочита|нрав/i.test(userText)) return;
+    try {
+      var prompt =
+        "Ты ведёшь память личного ассистента. Ниже уже известные факты о пользователе и последний обмен репликами.\n" +
+        "Верни только JSON-массив строк: до 3 НОВЫХ устойчивых фактов о самом пользователе (его предпочтения, планы, учёба, работа, привычки, просьбы «запомни»), " +
+        "каждый короче 100 символов, по-русски, от третьего лица без имени (например «любит короткие ответы»). " +
+        "Не записывай пароли, номера карт и документов, адреса и телефоны, разовые вопросы и то, что уже известно. Если нового нет, верни [].\n\n" +
+        "Известные факты:\n" + (state.facts.join("\n") || "(нет)") +
+        "\n\nПользователь: " + userText.slice(0, 1500) + "\nАссистент: " + answer.slice(0, 800);
+      var facts = await sample.json(prompt);
+      if (!Array.isArray(facts)) return;
+      var have = state.facts.map(function (f) { return f.toLowerCase(); });
+      var add = facts
+        .filter(function (f) { return typeof f === "string"; })
+        .map(function (f) { return f.trim(); })
+        .filter(function (f) { return f && f.length <= 160 && have.indexOf(f.toLowerCase()) < 0; })
+        .slice(0, 3);
+      if (add.length) {
+        state.facts = state.facts.concat(add);
+        save();
+        $("#memN").textContent = String(state.facts.length);
+        if (!$("#sheet").hidden) renderFacts();
+      }
+    } catch (e) { /* memory is best-effort */ }
+  }
+
+  /* ---------- composer ---------- */
+  function autosize() {
+    box.style.height = "auto";
+    box.style.height = Math.min(box.scrollHeight, 160) + "px";
+  }
+  box.addEventListener("input", function () { autosize(); updateGo(); });
+  box.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); send(box.value); }
+  });
+  $("#composer").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (busy) { if (ctl) ctl.abort(); return; }
+    send(box.value);
+  });
+
+  /* ---------- memory sheet ---------- */
+  var sheet = $("#sheet"), factsEl = $("#facts");
+  function renderFacts() {
+    factsEl.textContent = "";
+    if (!state.facts.length) {
+      var e = document.createElement("li");
+      e.className = "empty-facts";
+      e.style.display = "block";
+      e.textContent = "Пока пусто. Расскажи Nexi о себе в чате или добавь факт ниже.";
+      factsEl.appendChild(e);
+      return;
+    }
+    state.facts.forEach(function (f, i) {
+      var li = document.createElement("li");
+      var t = document.createElement("span"); t.textContent = f;
+      var x = document.createElement("button");
+      x.type = "button"; x.className = "x"; x.textContent = "×";
+      x.setAttribute("aria-label", "Убрать: " + f);
+      x.addEventListener("click", function () {
+        state.facts.splice(i, 1); save(); renderFacts();
+        $("#memN").textContent = String(state.facts.length);
+      });
+      li.appendChild(t); li.appendChild(x); factsEl.appendChild(li);
+    });
+  }
+  $("#memBtn").addEventListener("click", function () { renderFacts(); sheet.hidden = false; $("#closeSheet").focus(); });
+  $("#closeSheet").addEventListener("click", function () { sheet.hidden = true; $("#memBtn").focus(); });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !sheet.hidden) sheet.hidden = true; });
+  $("#addForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var inp = $("#addInput"), v = inp.value.trim();
+    if (!v) return;
+    state.facts.push(v.slice(0, 160)); inp.value = "";
+    save(); renderFacts(); $("#memN").textContent = String(state.facts.length);
+  });
+  var wipe = $("#wipeChat"), wipeTimer = null;
+  wipe.addEventListener("click", function () {
+    if (wipe.dataset.armed !== "true") {
+      wipe.dataset.armed = "true"; wipe.textContent = "Точно очистить?";
+      wipeTimer = setTimeout(function () { wipe.dataset.armed = "false"; wipe.textContent = "Очистить переписку"; }, 4000);
+      return;
+    }
+    clearTimeout(wipeTimer);
+    wipe.dataset.armed = "false"; wipe.textContent = "Очистить переписку";
+    state.messages = []; transientError = ""; save(); render(); sheet.hidden = true;
+  });
+
+  /* ---------- Gemini ---------- */
+  function getKey() { try { return localStorage.getItem(KEYK) || ""; } catch (e) { return ""; } }
+  function getModel() { try { return localStorage.getItem(MODELK) || "gemini-flash-latest"; } catch (e) { return "gemini-flash-latest"; } }
+  function setLS(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} }
+
+  function httpCode(status, msg) {
+    msg = msg || "";
+    if (status === 429) return "rate_limited";
+    if (status === 401 || status === 403 || /API key/i.test(msg)) return "bad_key";
+    if (status === 404) return "bad_model";
+    if (status === 400 && /too (long|large)|token/i.test(msg)) return "prompt_too_large";
+    return "upstream_error";
+  }
+
+  async function gemini(input, opts, wantJson) {
+    opts = opts || {};
+    var sys = "", turns = [];
+    if (typeof input === "string") turns = [{ role: "user", content: input }];
+    else { sys = input[0].content; turns = input.slice(1); }
+    var contents = [];
+    turns.forEach(function (m) {
+      var role = m.role === "assistant" ? "model" : "user";
+      var last = contents[contents.length - 1];
+      if (last && last.role === role) last.parts[0].text += "\n\n" + m.content;
+      else contents.push({ role: role, parts: [{ text: m.content }] });
+    });
+    if (!contents.length || contents[0].role !== "user") contents.unshift({ role: "user", parts: [{ text: "Привет" }] });
+    var body = { contents: contents, generationConfig: {} };
+    if (sys) body.systemInstruction = { parts: [{ text: sys }] };
+    if (wantJson) body.generationConfig.responseMimeType = "application/json";
+
+    var text = "", truncated = false;
+    var resp;
+    try {
+      resp = await fetch(API + "models/" + encodeURIComponent(getModel()) + ":streamGenerateContent?alt=sse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": getKey() },
+        body: JSON.stringify(body),
+        signal: opts.signal
+      });
+    } catch (e) {
+      if (e && e.name === "AbortError") throw { code: "cancelled", message: "cancelled", text: text };
+      throw { code: "offline", message: String(e) };
+    }
+    if (!resp.ok) {
+      var m = "";
+      try { m = ((await resp.json()).error || {}).message || ""; } catch (e) {}
+      throw { code: httpCode(resp.status, m), message: m };
+    }
+    var reader = resp.body.getReader(), dec = new TextDecoder(), buf = "", blocked = false;
+    try {
+      for (;;) {
+        var r = await reader.read();
+        if (r.done) break;
+        buf += dec.decode(r.value, { stream: true });
+        var parts = buf.split(/\r?\n\r?\n/);
+        buf = parts.pop();
+        parts.forEach(function (chunk) {
+          chunk.split(/\r?\n/).forEach(function (line) {
+            if (line.indexOf("data:") !== 0) return;
+            var j; try { j = JSON.parse(line.slice(5)); } catch (e) { return; }
+            if (j.promptFeedback && j.promptFeedback.blockReason) blocked = true;
+            var c = j.candidates && j.candidates[0];
+            if (!c) return;
+            if (c.finishReason === "MAX_TOKENS") truncated = true;
+            if (c.finishReason === "SAFETY" || c.finishReason === "PROHIBITED_CONTENT") blocked = true;
+            var delta = ((c.content && c.content.parts) || []).map(function (p) { return p.text || ""; }).join("");
+            if (delta) {
+              text += delta;
+              if (opts.onText) opts.onText({ text: text, delta: delta });
+            }
+          });
+        });
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") throw { code: "cancelled", message: "cancelled", text: text };
+      throw { code: "upstream_error", message: String(e), text: text };
+    }
+    if (!text) throw { code: blocked ? "refused" : "upstream_error", message: "empty" };
+    return { text: text, truncated: truncated };
+  }
+
+  function makeSample() {
+    var f = function (input, opts) { return gemini(input, opts, false); };
+    f.json = async function (input, opts) {
+      var r = await gemini(input, opts, true);
+      try { return JSON.parse(r.text); } catch (e) {}
+      var a = r.text.indexOf("["), b = r.text.lastIndexOf("]");
+      if (a >= 0 && b > a) { try { return JSON.parse(r.text.slice(a, b + 1)); } catch (e) {} }
+      throw { code: "invalid_json", message: "bad json", text: r.text };
+    };
+    return f;
+  }
+
+  function refresh() {
+    sample = getKey() ? makeSample() : null;
+    $("#notice").hidden = !!sample;
+    updateGo();
+  }
+
+  /* ---------- key sheet ---------- */
+  var setSheet = $("#setSheet"), keyInput = $("#keyInput"), modelSel = $("#modelSel"), keyStatus = $("#keyStatus");
+  function status(t, bad) { keyStatus.textContent = t; keyStatus.className = "status" + (bad ? " bad" : ""); }
+  function fillModels(ids, selected) {
+    modelSel.textContent = "";
+    ids.forEach(function (id) {
+      var o = document.createElement("option");
+      o.value = id; o.textContent = id; if (id === selected) o.selected = true;
+      modelSel.appendChild(o);
+    });
+  }
+  function openSettings() {
+    keyInput.value = "";
+    keyInput.placeholder = getKey() ? "Ключ сохранён. Вставь новый, чтобы заменить" : "AIza…";
+    fillModels([getModel()], getModel());
+    status(getKey() ? "Ключ добавлен." : "", false);
+    setSheet.hidden = false; keyInput.focus();
+  }
+  $("#setBtn").addEventListener("click", openSettings);
+  $("#openSet").addEventListener("click", openSettings);
+  $("#closeSet").addEventListener("click", function () { setSheet.hidden = true; });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !setSheet.hidden) setSheet.hidden = true; });
+  $("#keyForm").addEventListener("submit", function (ev) { ev.preventDefault(); $("#saveKey").click(); });
+  modelSel.addEventListener("change", function () { setLS(MODELK, modelSel.value); });
+  $("#delKey").addEventListener("click", function () {
+    setLS(KEYK, ""); keyInput.value = ""; status("Ключ удалён.", false); refresh();
+  });
+  $("#saveKey").addEventListener("click", async function () {
+    var k = keyInput.value.trim() || getKey();
+    if (!k) { status("Вставь ключ.", true); return; }
+    status("Проверяю…", false);
+    try {
+      var resp = await fetch(API + "models?pageSize=200", { headers: { "x-goog-api-key": k } });
+      if (!resp.ok) { status(errCopy(httpCode(resp.status, ((await resp.json().catch(function () { return {}; })).error || {}).message)), true); return; }
+      var j = await resp.json();
+      var ids = (j.models || [])
+        .filter(function (m) { return (m.supportedGenerationMethods || []).indexOf("generateContent") >= 0 && /^models\/gemini/.test(m.name); })
+        .map(function (m) { return m.name.replace(/^models\//, ""); })
+        .filter(function (id) { return !/embed|tts|image|live|audio|robotics|computer/.test(id); });
+      if (!ids.length) ids = ["gemini-flash-latest"];
+      var cur = getModel();
+      var pick = ids.indexOf(cur) >= 0 ? cur : (ids.indexOf("gemini-flash-latest") >= 0 ? "gemini-flash-latest" : (ids.filter(function (x) { return /flash/.test(x); })[0] || ids[0]));
+      setLS(KEYK, k); setLS(MODELK, pick); keyInput.value = "";
+      fillModels(ids, pick);
+      status("Готово. Ключ работает, можно писать Nexi.", false);
+      refresh();
+    } catch (e) { status(errCopy("offline"), true); }
+  });
+
+  /* ---------- start ---------- */
+  render();
+  refresh();
+
+  var APPDOC = [
+    "Это одностраничное веб-приложение Nexi (чат с ИИ). Тебя просят изменить его с помощью CSS и/или JavaScript.",
+    "Структура: div.app (flex-колонка) содержит header.top (внутри .brand с .dot и .word, и div.actions с кнопками .mem-btn), #notice, #safeNote, main#thread.thread (сообщения: div.msg.user и div.msg.bot с .who и .body), form#composer.composer (textarea#box и button#go.go).",
+    "Листы поверх приложения: section.sheet (#sheet, #setSheet, #modSheet).",
+    "CSS-переменные тем: --bg --surface --ink --muted --line --accent --accent-ink --accent-soft --danger --code-bg --font-body --font-display --font-mono. Всегда крась через var(--...), чтобы работали светлая и тёмная темы.",
+    "JS выполняется один раз при запуске, уже после построения интерфейса, как тело функции с параметром Nexi. API: Nexi.send(text) отправляет сообщение от пользователя; Nexi.addFact(text) добавляет факт в память; Nexi.messages() возвращает копию переписки; Nexi.root, Nexi.thread, Nexi.box ссылки на .app, #thread и #box.",
+    "Правила: содержимое #thread перерисовывается, поэтому не добавляй туда свои элементы, а стилизуй сообщения через CSS. Новые кнопки добавляй в header .actions, перед #composer или делай position:fixed (с учётом env(safe-area-inset-bottom)). Не делай сетевых запросов, не читай и не меняй localStorage с ключами, начинающимися на nexi:key, не используй eval. Не ломай существующие элементы. Код не должен падать, если элемента нет. Делай минимально необходимое.",
+    "Размер: css и js вместе до 8000 символов."
+  ].join("\n");
+
+  /* ---------- self-edits ---------- */
+  var MODK = "nexi:mods", BOOTK = "nexi:booting";
+  var mods = [], live = {}, pendingMod = null;
+  try { mods = JSON.parse(localStorage.getItem(MODK) || "[]"); if (!Array.isArray(mods)) mods = []; } catch (e) { mods = []; }
+  function saveMods() { try { localStorage.setItem(MODK, JSON.stringify(mods)); } catch (e) {} }
+
+  var api = {
+    root: app, thread: thread, box: box,
+    send: function (t) { return send(String(t)); },
+    addFact: function (t) {
+      t = String(t).trim().slice(0, 160); if (!t) return;
+      state.facts.push(t); save(); $("#memN").textContent = String(state.facts.length);
+    },
+    messages: function () { return state.messages.map(function (m) { return { role: m.role, content: m.content }; }); }
+  };
+  Object.freeze(api);
+
+  function applyMod(m) {
+    var rec = {};
+    if (m.css) {
+      var st = document.createElement("style");
+      st.setAttribute("data-mod", m.id); st.textContent = m.css;
+      document.head.appendChild(st); rec.style = st;
+    }
+    if (m.js) {
+      try { (new Function("Nexi", m.js))(api); } catch (e) { rec.err = String(e && e.message || e); }
+    }
+    live[m.id] = rec;
+    return rec;
+  }
+
+  var safe = location.hash === "#safe";
+  try { if (localStorage.getItem(BOOTK) === "1") safe = true; } catch (e) {}
+  function clearBoot() { setLS(BOOTK, ""); }
+  window.addEventListener("pagehide", clearBoot);
+  if (safe) {
+    clearBoot();
+    $("#safeNote").hidden = false;
+    $("#safeOff").addEventListener("click", function () { clearBoot(); location.hash = ""; location.reload(); });
+  } else {
+    setLS(BOOTK, "1");
+    mods.forEach(function (m) { if (m.on) applyMod(m); });
+    setTimeout(clearBoot, 2500);
+  }
+
+  var modSheet = $("#modSheet"), modStatus = $("#modStatus"), modList = $("#modList"), modBar = $("#modBar");
+  function mstatus(t, bad) { modStatus.textContent = t; modStatus.className = "status" + (bad ? " bad" : ""); }
+  function renderMods() {
+    modList.textContent = "";
+    mods.forEach(function (m, i) {
+      var li = document.createElement("li");
+      var t = document.createElement("div"); t.className = "t" + (m.on ? "" : " off"); t.textContent = m.title + (m.on ? "" : " (выключена)");
+      var row = document.createElement("div"); row.className = "row";
+      var tog = document.createElement("button"); tog.type = "button"; tog.textContent = m.on ? "Выключить" : "Включить";
+      tog.addEventListener("click", function () { m.on = !m.on; saveMods(); location.reload(); });
+      var del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Удалить";
+      del.addEventListener("click", function () { mods.splice(i, 1); saveMods(); location.reload(); });
+      row.appendChild(tog); row.appendChild(del); li.appendChild(t); li.appendChild(row); modList.appendChild(li);
+    });
+  }
+  $("#modBtn").addEventListener("click", function () {
+    renderMods(); mstatus(sample ? "" : "Сначала добавь ключ Gemini в разделе «Ключ».", !sample); modSheet.hidden = false; $("#modAsk").focus();
+  });
+  $("#closeMod").addEventListener("click", function () { modSheet.hidden = true; });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !modSheet.hidden) modSheet.hidden = true; });
+
+  $("#modGo").addEventListener("click", async function () {
+    var ask = $("#modAsk").value.trim();
+    if (!sample) { mstatus("Сначала добавь ключ Gemini в разделе «Ключ».", true); return; }
+    if (!ask) { mstatus("Опиши, что изменить.", true); return; }
+    var btn = $("#modGo"); btn.disabled = true; mstatus("Nexi пишет правку…", false);
+    var prompt = APPDOC + "\n\nУже установленные правки:\n" + (mods.map(function (m) { return "- " + m.title; }).join("\n") || "(нет)") +
+      "\n\nЗапрос пользователя: " + ask.slice(0, 1500) +
+      '\n\nВерни только JSON-объект {"title": "короткое название по-русски", "explain": "что изменится, 1-2 предложения по-русски", "css": "...", "js": "..."}. css и js могут быть пустыми строками.';
+    try {
+      var r = await sample.json(prompt);
+      if (!r || typeof r !== "object" || (!r.css && !r.js)) throw { code: "invalid_json" };
+      var css = String(r.css || ""), js = String(r.js || "");
+      if (css.length + js.length > 12000) throw { code: "prompt_too_large" };
+      pendingMod = { id: "m" + Date.now(), title: String(r.title || "Правка").slice(0, 80), css: css, js: js, on: true };
+      var rec = applyMod(pendingMod);
+      modSheet.hidden = true;
+      $("#modBarText").textContent = (r.explain ? String(r.explain) + " " : "") + (rec.err ? "Внимание: код выдал ошибку, часть правки могла не сработать. " : "") + "Посмотри и реши.";
+      modBar.hidden = false;
+      mstatus("", false);
+    } catch (e) {
+      mstatus(e && e.code === "invalid_json" ? "Не вышло составить правку. Опиши проще и попробуй ещё раз." : errCopy(e && e.code), true);
+    }
+    btn.disabled = false;
+  });
+  $("#modKeep").addEventListener("click", function () {
+    if (!pendingMod) return;
+    mods.push(pendingMod); saveMods(); pendingMod = null; modBar.hidden = true; $("#modAsk").value = "";
+  });
+  $("#modUndo").addEventListener("click", function () { pendingMod = null; location.reload(); });
+  if ("serviceWorker" in navigator) { navigator.serviceWorker.register("./sw.js").catch(function () {}); }
+})();
+</script>
+</body>
+</html>
