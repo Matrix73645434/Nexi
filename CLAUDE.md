@@ -9,13 +9,13 @@ Nexlock — мобильный мессенджер (интернет-чаты �
 - Стек: React Native + Expo + TypeScript; сервер Fastify + PostgreSQL + Redis.
 - Архитектура и план: `docs/ARCHITECTURE.md`.
 - Брендинг: `assets/brand/app-icon-1024.png` (иконка приложения), `assets/brand/avatar-placeholder-1024.png` (аватар по умолчанию, когда у пользователя нет фото); исходники — `*-source.png` / `avatar-placeholder.png`.
+- В корне лежит не связанный с Nexlock PWA-прототип «Nexi» (`index.html`, `sw.js`, `manifest.json`, `icon.svg`, `IMG_*.jpg`). Не удалять без решения владельца.
 
 ## Идентификаторы (решение владельца)
 
 - **UID** — ID пользователя `NX-XXXX-XXXX`, выдаётся сервером случайно при регистрации, **неизменяем**, единственный ключ поиска пользователей.
 - **DID** — ID устройства, выводится из его Ed25519-ключа.
 - **MID** — ID сообщения в Radio Chat (`src` + `counter` радиокадра).
-- В корне лежит не связанный с Nexlock PWA-прототип «Nexi» (`index.html`, `sw.js`, `manifest.json`, `icon.svg`, `IMG_*.jpg`). Не удалять без решения владельца.
 
 ## Правила разработки
 
